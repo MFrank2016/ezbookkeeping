@@ -17,12 +17,19 @@
                     </span>
                 </div>
                 <span class="text-body-medium">{{ tt('Total assets') }}</span>
-                <div class="text-body-large mt-1">
+                <div class="text-body-large mt-1 mb-2">
                     <span v-if="!loading || allAccountCount > 0">{{ totalAssets }}</span>
                     <span v-else-if="loading && allAccountCount <= 0">
                         <v-skeleton-loader class="skeleton-no-margin mt-3 mb-2 pb-1" type="text" :loading="true"></v-skeleton-loader>
                     </span>
                 </div>
+                <template v-if="showInvestmentValuation && (!loading || allAccountCount > 0)">
+                    <span class="text-body-medium">投资估值</span>
+                    <div class="text-body-large text-truncate mt-1">
+                        <span>{{ investmentMarketValue }}</span>
+                        <span class="ms-1" :style="{ color: investmentDiffColor }">（较账面 {{ investmentDiffText }}）</span>
+                    </div>
+                </template>
             </div>
 
             <v-divider class="my-2" />
@@ -44,6 +51,15 @@
                         <span class="text-body-medium text-truncate text-start">{{ tt(accountCategory.name) }}</span>
                     </div>
                 </a>
+            </li>
+
+            <v-divider class="my-2" />
+
+            <li class="nav-link account-nav-link-investment">
+                <router-link class="d-flex align-center" to="/investment">
+                    <v-icon class="nav-item-icon" :icon="mdiFinance" />
+                    <span class="nav-item-title text-body-medium text-truncate text-start">投资</span>
+                </router-link>
             </li>
         </template>
 
@@ -303,6 +319,13 @@
                                                             </template>
                                                         </div>
                                                         <span class="account-balance ms-2" v-else-if="element.category !== AccountCategory.CreditCard.type">{{ accountBalance(element, activeSubAccount[element.id], showAccountBalance) }}</span>
+                                                        <template v-if="accountInvestmentValuation(element, activeSubAccount[element.id])">
+                                                            <span class="account-investment-valuation ms-2 text-truncate"
+                                                                  :style="{ color: accountInvestmentValuation(element, activeSubAccount[element.id])?.color }">
+                                                                估值 {{ accountInvestmentValuation(element, activeSubAccount[element.id])?.marketValue }}
+                                                                ({{ accountInvestmentValuation(element, activeSubAccount[element.id])?.diff }})
+                                                            </span>
+                                                        </template>
                                                     </div>
                                                 </v-card-text>
                                             </v-card>
@@ -350,6 +373,7 @@ import { useDisplay } from 'vuetify';
 
 import { useI18n } from '@/locales/helpers.ts';
 import { useAccountListPageBase } from '@/views/base/accounts/AccountListPageBase.ts';
+import type { InvestmentValuationDisplay } from '@/views/base/overview/AssetSummaryWidgetBase.ts';
 
 import { useSettingsStore } from '@/stores/setting.ts';
 import { useUserStore } from '@/stores/user.ts';
@@ -373,6 +397,7 @@ import {
     mdiEyeOutline,
     mdiEyeOffOutline,
     mdiCalculatorVariantOutline,
+    mdiFinance,
     mdiRefresh,
     mdiSquareRounded,
     mdiPencilOutline,
@@ -414,6 +439,11 @@ const {
     netAssets,
     totalAssets,
     totalLiabilities,
+    showInvestmentValuation,
+    investmentMarketValue,
+    investmentDiffText,
+    investmentDiffColor,
+    investmentValuations,
     canShowAvailableCredit,
     accountCategoryTotalBalance,
     accountBalance,
@@ -471,6 +501,11 @@ const activeAccountCategoryVisibleAccountCount = computed<number>(() => {
 
     return visibleCount;
 });
+
+function accountInvestmentValuation(account: Account, currentSubAccountId: string | undefined): InvestmentValuationDisplay | null {
+    const accountId: string | null = account.getAccountOrSubAccountId(currentSubAccountId);
+    return accountId ? investmentValuations.value[accountId] ?? null : null;
+}
 
 function reload(force: boolean): void {
     loading.value = true;
@@ -792,6 +827,10 @@ reload(false);
     height: calc(var(--v-tabs-height) * 1.5);
 }
 
+.account-category-tabs .nav-link.account-nav-link-investment {
+    height: auto;
+}
+
 .accounts-overview-title {
     line-height: 2rem !important;
     min-height: 52px;
@@ -880,6 +919,11 @@ reload(false);
     .account-balance {
         font-size: 1.25rem;
         color: rgba(var(--v-theme-on-background), var(--v-high-emphasis-opacity));
+    }
+
+    .account-investment-valuation {
+        font-size: 0.875rem;
+        color: rgba(var(--v-theme-on-background), var(--v-medium-emphasis-opacity));
     }
 }
 </style>

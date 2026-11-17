@@ -152,6 +152,50 @@ func TestCronJobNextRunTimeWithEvery15MinutesPeriod(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestCronJobNextRunTimeWithWeeklyPeriod(t *testing.T) {
+	scheduler, err := gocron.NewScheduler(
+		gocron.WithLocation(time.Local),
+	)
+	assert.Nil(t, err)
+
+	job := CronJob{
+		Name:        "TestCronJobWithWeeklyPeriod",
+		Description: "The test cron job",
+		Period: CronJobWeeklyPeriod{
+			Weekday: time.Sunday,
+			Hour:    23,
+			Minute:  30,
+		},
+		Run: func(c *core.CronContext) error {
+			return nil
+		},
+	}
+
+	assert.Equal(t, 7*24*time.Hour, job.Period.GetInterval())
+
+	gocronJob, err := scheduler.NewJob(
+		job.Period.ToJobDefinition(),
+		gocron.NewTask(job.doRun),
+		gocron.WithName(job.Name),
+		gocron.WithSingletonMode(gocron.LimitModeReschedule),
+	)
+	assert.Nil(t, err)
+
+	scheduler.Start()
+
+	nextRunTime, err := gocronJob.NextRun()
+	assert.Nil(t, err)
+
+	assert.Equal(t, time.Sunday, nextRunTime.Weekday())
+	assert.Equal(t, 23, nextRunTime.Hour())
+	assert.Equal(t, 30, nextRunTime.Minute())
+	assert.Equal(t, 0, nextRunTime.Second())
+	assert.True(t, nextRunTime.After(time.Now()))
+
+	err = scheduler.Shutdown()
+	assert.Nil(t, err)
+}
+
 func TestCronJobNextRunTimeWithFixedTimePeriod(t *testing.T) {
 	scheduler, err := gocron.NewScheduler(
 		gocron.WithLocation(time.Local),

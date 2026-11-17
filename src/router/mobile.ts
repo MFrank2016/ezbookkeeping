@@ -12,6 +12,7 @@ import TransactionEditPage from '@/views/mobile/transactions/EditPage.vue';
 import TransactionAmountFilterPage from '@/views/mobile/transactions/AmountFilterPage.vue';
 
 import AccountListPage from '@/views/mobile/accounts/ListPage.vue';
+import InvestmentPage from '@/views/mobile/investments/InvestmentPage.vue';
 import AccountEditPage from '@/views/mobile/accounts/EditPage.vue';
 import AccountReconciliationStatementPage from '@/views/mobile/accounts/ReconciliationStatementPage.vue';
 import AccountMoveAllTransactionsPage from '@/views/mobile/accounts/MoveAllTransactionsPage.vue';
@@ -186,6 +187,11 @@ const routes: Router.RouteParameters[] = [
     {
         path: '/account/list',
         async: asyncResolve(AccountListPage),
+        beforeEnter: [checkLogin]
+    },
+    {
+        path: '/investment',
+        async: asyncResolve(InvestmentPage),
         beforeEnter: [checkLogin]
     },
     {

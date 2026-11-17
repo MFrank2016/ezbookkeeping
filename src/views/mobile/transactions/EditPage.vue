@@ -242,6 +242,30 @@
                 </two-column-list-item-selection-sheet>
             </f7-list-item>
 
+            <template v-if="pageTypeAndMode?.type === TransactionEditPageType.Transaction && isInvestmentTransfer">
+                <f7-list-item class="list-item-with-header-and-title" header="投资信息" title="黄金">
+                    <template #after>目前仅支持黄金</template>
+                </f7-list-item>
+
+                <template v-if="mode === TransactionEditPageMode.View">
+                    <f7-list-item class="list-item-with-header-and-title" :header="investmentDirection === 'buy' ? '买入克重' : '卖出克重'"
+                                  :title="investmentForm.unitsGrams ? `${investmentForm.unitsGrams} 克` : '-'"></f7-list-item>
+                    <f7-list-item class="list-item-with-header-and-title" header="手续费"
+                                  :title="investmentForm.feeYuan ? `${investmentForm.feeYuan} 元` : '-'"></f7-list-item>
+                </template>
+                <template v-else>
+                    <f7-list-input type="number" step="0.0001" inputmode="decimal" autocomplete="off"
+                                   :label="investmentDirection === 'buy' ? '买入克重' : '卖出克重'"
+                                   placeholder="0.0000"
+                                   v-model:value="investmentForm.unitsGrams"></f7-list-input>
+                    <f7-list-input type="number" step="0.01" inputmode="decimal" autocomplete="off"
+                                   label="手续费" placeholder="0.00"
+                                   v-model:value="investmentForm.feeYuan"></f7-list-input>
+                </template>
+
+                <f7-list-item text="转账金额请填实际扣款总额（含手续费）"></f7-list-item>
+            </template>
+
             <f7-list-item
                 class="transaction-edit-datetime list-item-with-header-and-title"
                 link="#" no-chevron
@@ -645,12 +669,16 @@ const {
     transactionDescriptionTitle,
     inputEmptyProblemMessage,
     inputIsEmpty,
+    isInvestmentTransfer,
+    investmentDirection,
+    investmentForm,
     setTransactionModel,
     updateTransactionModelFromRecognizedResponse,
     updateTransactionModelByAfterSaveAction,
     updateTransactionTime,
     updateTransactionTimezone,
     swapTransactionData,
+    syncInvestmentFormToTransaction,
     getDisplayAmount,
     getTransactionPictureUrl
 } = useTransactionEditPageBase(pageTypeAndMode?.type || TransactionEditPageType.Transaction, pageTypeAndMode?.mode, query['type'] ? parseInt(query['type']) : undefined);
@@ -1107,6 +1135,8 @@ function save(afterAction: AfterSaveAction): void {
         const doSubmit = function () {
             submitting.value = true;
             showLoading(() => submitting.value);
+
+            syncInvestmentFormToTransaction();
 
             transactionsStore.saveTransaction({
                 transaction: transaction.value as Transaction,

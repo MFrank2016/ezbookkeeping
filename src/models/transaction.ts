@@ -30,6 +30,9 @@ export class Transaction implements TransactionInfoResponse {
     public tagIds: string[];
     public comment: string;
     public editable: boolean;
+    public investmentTarget: number = 0;
+    public investmentUnits: number = 0;
+    public investmentFee: number = 0;
 
     private _pictures?: TransactionPicture[];
     private _geoLocation?: TransactionGeoLocation;
@@ -245,6 +248,9 @@ export class Transaction implements TransactionInfoResponse {
             pictureIds: this.getPictureIds(),
             comment: this.comment,
             geoLocation: this.getNormalizedGeoLocation(),
+            investmentTarget: this.investmentTarget,
+            investmentUnits: this.investmentUnits,
+            investmentFee: this.investmentFee,
             clientSessionId: clientSessionId
         };
     }
@@ -270,7 +276,10 @@ export class Transaction implements TransactionInfoResponse {
             tagIds: this.tagIds,
             pictureIds: this.getPictureIds(),
             comment: this.comment,
-            geoLocation: this.getNormalizedGeoLocation()
+            geoLocation: this.getNormalizedGeoLocation(),
+            investmentTarget: this.investmentTarget,
+            investmentUnits: this.investmentUnits,
+            investmentFee: this.investmentFee
         };
     }
 
@@ -333,6 +342,10 @@ export class Transaction implements TransactionInfoResponse {
             transactionResponse.comment,
             transactionResponse.editable
         );
+
+        transaction.investmentTarget = transactionResponse.investmentTarget ?? 0;
+        transaction.investmentUnits = transactionResponse.investmentUnits ?? 0;
+        transaction.investmentFee = transactionResponse.investmentFee ?? 0;
 
         if (transactionResponse.category) {
             transaction.setCategory(TransactionCategory.of(transactionResponse.category));
@@ -544,6 +557,9 @@ export interface TransactionCreateRequest {
     readonly pictureIds: string[];
     readonly comment: string;
     readonly geoLocation?: TransactionGeoLocationRequest;
+    readonly investmentTarget?: number;
+    readonly investmentUnits?: number;
+    readonly investmentFee?: number;
     readonly clientSessionId: string;
 }
 
@@ -562,6 +578,9 @@ export interface TransactionModifyRequest {
     readonly pictureIds: string[];
     readonly comment: string;
     readonly geoLocation?: TransactionGeoLocationRequest;
+    readonly investmentTarget?: number;
+    readonly investmentUnits?: number;
+    readonly investmentFee?: number;
 }
 
 export interface TransactionBatchUpdateCategoryRequest {
@@ -684,6 +703,9 @@ export interface TransactionInfoResponse {
     readonly comment: string;
     readonly geoLocation?: TransactionGeoLocationResponse;
     readonly editable: boolean;
+    readonly investmentTarget: number;
+    readonly investmentUnits: number;
+    readonly investmentFee: number;
 }
 
 export interface TransactionStatisticRequest {

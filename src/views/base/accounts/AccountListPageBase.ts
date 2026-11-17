@@ -5,6 +5,9 @@ import { useI18n } from '@/locales/helpers.ts';
 import { useSettingsStore } from '@/stores/setting.ts';
 import { useUserStore } from '@/stores/user.ts';
 import { useAccountsStore } from '@/stores/account.ts';
+import { useInvestmentsStore } from '@/stores/investment.ts';
+
+import { INVESTMENT_VALUATION_UP_COLOR, INVESTMENT_VALUATION_DOWN_COLOR, type InvestmentValuationDisplay } from '@/views/base/overview/AssetSummaryWidgetBase.ts';
 
 import type { BigDecimal, HiddenAmount, BigDecimalWithSuffix } from '@/core/numeral.ts';
 import type { WeekDayValue } from '@/core/datetime.ts';
@@ -12,6 +15,7 @@ import { AccountCategory, AccountType } from '@/core/account.ts';
 import { ACCOUNT_CURRENCY_NOT_SET_VALUE } from '@/consts/currency.ts';
 
 import type { Account, CategorizedAccount } from '@/models/account.ts';
+import { parseInvestmentAmount } from '@/models/investment.ts';
 
 import { isDefined, isObject, isString } from '@/lib/common.ts';
 import { isBigDecimal, parseBigDecimal } from '@/lib/numeral.ts';
@@ -22,6 +26,12 @@ export function useAccountListPageBase() {
     const settingsStore = useSettingsStore();
     const userStore = useUserStore();
     const accountsStore = useAccountsStore();
+    const investmentsStore = useInvestmentsStore();
+
+    // a failed request just hides the investment valuation
+    if (!investmentsStore.loading) {
+        investmentsStore.loadOverview(false).catch(() => {});
+    }
 
     const loading = ref<boolean>(true);
     const showHidden = ref<boolean>(false);
@@ -58,6 +68,43 @@ export function useAccountListPageBase() {
     const totalLiabilities = computed<string>(() => {
         const totalLiabilities: BigDecimal | HiddenAmount | BigDecimalWithSuffix = accountsStore.getTotalLiabilities(showAccountBalance.value, settingsStore.appSettings.totalAmountExcludeAccountIds);
         return formatAmountToLocalizedNumeralsWithCurrency(totalLiabilities, defaultCurrency.value);
+    });
+
+    // the investment valuation is an additional line and is hidden when amounts are hidden, there is no investment account or the gold price is unavailable
+    const showInvestmentValuation = computed<boolean>(() => {
+        const overview = investmentsStore.overview;
+        return showAccountBalance.value && !!overview && overview.priceAvailable && overview.accounts.length > 0;
+    });
+
+    const investmentMarketValue = computed<string>(() => {
+        if (!showInvestmentValuation.value) {
+            return '';
+        }
+
+        return formatAmountToLocalizedNumeralsWithCurrency(investmentsStore.totalMarketValue, defaultCurrency.value);
+    });
+
+    const investmentDiffText = computed<string>(() => {
+        if (!showInvestmentValuation.value) {
+            return '';
+        }
+
+        const diff: BigDecimal = investmentsStore.totalDiff;
+        const prefix = diff.isPositive() ? '+' : (diff.isNegative() ? '-' : '');
+
+        return prefix + formatAmountToLocalizedNumeralsWithCurrency(diff.abs(), defaultCurrency.value);
+    });
+
+    const investmentDiffColor = computed<string>(() => {
+        const diff: BigDecimal = investmentsStore.totalDiff;
+
+        if (diff.isPositive()) {
+            return INVESTMENT_VALUATION_UP_COLOR;
+        } else if (diff.isNegative()) {
+            return INVESTMENT_VALUATION_DOWN_COLOR;
+        } else {
+            return '';
+        }
     });
 
     function canShowAvailableCredit(account: Account): boolean {
@@ -148,6 +195,35 @@ export function useAccountListPageBase() {
         }
     }
 
+    // valuations of all investment accounts keyed by account id, empty when amounts are hidden or the gold price is unavailable
+    const investmentValuations = computed<Record<string, InvestmentValuationDisplay>>(() => {
+        const valuations: Record<string, InvestmentValuationDisplay> = {};
+
+        if (!showInvestmentValuation.value) {
+            return valuations;
+        }
+
+        for (const accountId of Object.keys(investmentsStore.overviewByAccountId)) {
+            const accountOverview = investmentsStore.overviewByAccountId[accountId];
+
+            if (!accountOverview) {
+                continue;
+            }
+
+            const diff: BigDecimal = parseInvestmentAmount(accountOverview.diff);
+            const prefix = diff.isPositive() ? '+' : (diff.isNegative() ? '-' : '');
+            const currency: string = accountOverview.currency || defaultCurrency.value;
+
+            valuations[accountId] = {
+                marketValue: formatAmountToLocalizedNumeralsWithCurrency(parseInvestmentAmount(accountOverview.marketValue), currency),
+                diff: prefix + formatAmountToLocalizedNumeralsWithCurrency(diff.abs(), currency),
+                color: diff.isPositive() ? INVESTMENT_VALUATION_UP_COLOR : (diff.isNegative() ? INVESTMENT_VALUATION_DOWN_COLOR : '')
+            };
+        }
+
+        return valuations;
+    });
+
     return {
         // states
         loading,
@@ -168,6 +244,11 @@ export function useAccountListPageBase() {
         netAssets,
         totalAssets,
         totalLiabilities,
+        showInvestmentValuation,
+        investmentMarketValue,
+        investmentDiffText,
+        investmentDiffColor,
+        investmentValuations,
         // functions
         canShowAvailableCredit,
         accountCategoryTotalBalance,

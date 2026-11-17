@@ -9,11 +9,13 @@ import { useTransactionCategoriesStore } from '@/stores/transactionCategory.ts';
 import { useTransactionTagsStore } from '@/stores/transactionTag.ts';
 import { useTransactionsStore } from '@/stores/transaction.ts';
 import { useExchangeRatesStore } from '@/stores/exchangeRates.ts';
+import { useInvestmentsStore } from '@/stores/investment.ts';
 
 import type { BigDecimal, NumeralSystem } from '@/core/numeral.ts';
 import type { WeekDayValue } from '@/core/datetime.ts';
 import type { LocalizedTimezoneInfo } from '@/core/timezone.ts';
 import { ImageUploadQualityType } from '@/core/image.ts';
+import { CategoryType } from '@/core/category.ts';
 import { TransactionType, TransactionQuickAddButtonActionType } from '@/core/transaction.ts';
 import { TemplateType } from '@/core/template.ts';
 import { DISPLAY_HIDDEN_AMOUNT } from '@/consts/numeral.ts';
@@ -23,6 +25,7 @@ import { Account, type CategorizedAccountWithDisplayBalance } from '@/models/acc
 import type { TransactionCategory } from '@/models/transaction_category.ts';
 import type { TransactionTag } from '@/models/transaction_tag.ts';
 import type { TransactionPictureInfoBasicResponse } from '@/models/transaction_picture_info.ts';
+import { InvestmentTarget, INVESTMENT_UNITS_SCALE } from '@/models/investment.ts';
 import { Transaction } from '@/models/transaction.ts';
 import { TransactionTemplate } from '@/models/transaction_template.ts';
 import type { RecognizedTransactionResponse } from '@/models/large_language_model.ts';
@@ -74,6 +77,14 @@ export enum AfterSaveAction {
     StayWithCurrentTransaction = 'stayWithCurrentTransaction'
 }
 
+export interface InvestmentForm {
+    target: number;
+    unitsGrams: number | string;
+    feeYuan: number | string;
+}
+
+const INVESTMENT_TRANSFER_CATEGORY_NAME: string = '投资'; // private instance: the investment transfer category uses this hardcoded name
+
 export function useTransactionEditPageBase(type: TransactionEditPageType, initMode?: TransactionEditPageMode, transactionDefaultType?: number) {
     const {
         tt,
@@ -93,8 +104,11 @@ export function useTransactionEditPageBase(type: TransactionEditPageType, initMo
     const transactionTagsStore = useTransactionTagsStore();
     const transactionsStore = useTransactionsStore();
     const exchangeRatesStore = useExchangeRatesStore();
+    const investmentStore = useInvestmentsStore();
 
     const isSupportGeoLocation: boolean = !!navigator.geolocation;
+
+    investmentStore.loadAccounts().catch(() => {}); // the investment account list is required to detect an investment transfer
 
     const mode = ref<TransactionEditPageMode>(initMode ?? TransactionEditPageMode.Add);
     const editId = ref<string | null>(null);
@@ -451,6 +465,9 @@ export function useTransactionEditPageBase(type: TransactionEditPageType, initMo
             },
             setContextData
         );
+
+        fillInvestmentFormFromTransaction();
+        trySelectInvestmentTransferCategory();
     }
 
     function updateTransactionModelFromRecognizedResponse(response: RecognizedTransactionResponse): void {
@@ -576,6 +593,104 @@ export function useTransactionEditPageBase(type: TransactionEditPageType, initMo
         transactionsStore.setTransactionSuitableDestinationAmount(transaction.value, transaction.value.sourceAmount, transaction.value.sourceAmount, oldSourceAccountId, oldDestinationAccountId);
     });
 
+    const investmentAccountIds = computed<string[]>(() => investmentStore.investmentAccounts.map(account => account.accountId));
+
+    const isInvestmentTransfer = computed<boolean>(() => {
+        if (transaction.value.type !== TransactionType.Transfer) {
+            return false;
+        }
+
+        const sourceIsInvestmentAccount = investmentAccountIds.value.includes(transaction.value.sourceAccountId);
+        const destinationIsInvestmentAccount = investmentAccountIds.value.includes(transaction.value.destinationAccountId);
+
+        return sourceIsInvestmentAccount !== destinationIsInvestmentAccount;
+    });
+
+    const investmentDirection = computed<'buy' | 'sell'>(() => {
+        return investmentAccountIds.value.includes(transaction.value.destinationAccountId) ? 'buy' : 'sell';
+    });
+
+    const investmentForm = ref<InvestmentForm>({
+        target: InvestmentTarget.Gold,
+        unitsGrams: '',
+        feeYuan: ''
+    });
+
+    function getInvestmentTransferCategoryId(): string {
+        for (const category of (allCategories.value[CategoryType.Transfer] || [])) {
+            if (category.name === INVESTMENT_TRANSFER_CATEGORY_NAME) {
+                return category.id;
+            }
+
+            for (const subCategory of (category.subCategories || [])) {
+                if (subCategory.name === INVESTMENT_TRANSFER_CATEGORY_NAME) {
+                    return subCategory.id;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function trySelectInvestmentTransferCategory(): void {
+        if (mode.value === TransactionEditPageMode.View || !isInvestmentTransfer.value || transaction.value.transferCategoryId) {
+            return;
+        }
+
+        const categoryId = getInvestmentTransferCategoryId();
+
+        if (categoryId) {
+            transaction.value.transferCategoryId = categoryId;
+        }
+    }
+
+    function fillInvestmentFormFromTransaction(): void {
+        investmentForm.value.target = transaction.value.investmentTarget || InvestmentTarget.Gold;
+        investmentForm.value.unitsGrams = transaction.value.investmentUnits > 0
+            ? parseBigDecimal(transaction.value.investmentUnits).divide(INVESTMENT_UNITS_SCALE).toString()
+            : '';
+        investmentForm.value.feeYuan = transaction.value.investmentFee > 0
+            ? parseBigDecimal(transaction.value.investmentFee).divide(100).toString()
+            : '';
+    }
+
+    function parseInvestmentFormNumber(value: number | string): BigDecimal {
+        try {
+            return parseBigDecimal(value === '' ? 0 : value);
+        } catch {
+            return parseBigDecimal(0);
+        }
+    }
+
+    function syncInvestmentFormToTransaction(): void {
+        if (!isInvestmentTransfer.value) {
+            transaction.value.investmentTarget = InvestmentTarget.None;
+            transaction.value.investmentUnits = 0;
+            transaction.value.investmentFee = 0;
+            return;
+        }
+
+        transaction.value.investmentTarget = investmentForm.value.target;
+        transaction.value.investmentUnits = Math.round(parseInvestmentFormNumber(investmentForm.value.unitsGrams).multiply(INVESTMENT_UNITS_SCALE).toDoubleNumber());
+        transaction.value.investmentFee = Math.round(parseInvestmentFormNumber(investmentForm.value.feeYuan).multiply(100).toDoubleNumber());
+    }
+
+    watch(allCategories, () => {
+        trySelectInvestmentTransferCategory();
+    });
+
+    watch(isInvestmentTransfer, (isInvestmentTransferValue) => {
+        if (!isInvestmentTransferValue || mode.value === TransactionEditPageMode.View) {
+            return;
+        }
+
+        if (!investmentForm.value.target) {
+            investmentForm.value.target = InvestmentTarget.Gold;
+        }
+
+        trySelectInvestmentTransferCategory();
+    });
+
     return {
         // constants
         isSupportGeoLocation,
@@ -632,6 +747,9 @@ export function useTransactionEditPageBase(type: TransactionEditPageType, initMo
         transactionDescriptionTitle,
         inputEmptyProblemMessage,
         inputIsEmpty,
+        isInvestmentTransfer,
+        investmentDirection,
+        investmentForm,
         // functions
         createNewTransactionModel,
         setTransactionModel,
@@ -640,6 +758,7 @@ export function useTransactionEditPageBase(type: TransactionEditPageType, initMo
         updateTransactionTime,
         updateTransactionTimezone,
         swapTransactionData,
+        syncInvestmentFormToTransaction,
         getDisplayAmount,
         getTransactionPictureUrl
     }

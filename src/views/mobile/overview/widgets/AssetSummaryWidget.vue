@@ -27,6 +27,13 @@
                     <span>{{ totalLiabilities }}</span>
                 </small>
             </p>
+            <p class="no-margin" v-if="showInvestmentValuation && !loading">
+                <small class="account-overview-info">
+                    <span>投资估值</span>
+                    <span>{{ investmentMarketValue }}</span>
+                    <span :style="{ color: investmentDiffColor }">（较账面 {{ investmentDiffText }}）</span>
+                </small>
+            </p>
         </f7-card-header>
     </f7-card>
 </template>
@@ -61,7 +68,11 @@ const {
     showAccountBalance,
     netAssets,
     totalAssets,
-    totalLiabilities
+    totalLiabilities,
+    showInvestmentValuation,
+    investmentMarketValue,
+    investmentDiffText,
+    investmentDiffColor
 } = useAssetSummaryWidgetBase(props.scene);
 
 const environmentsStore = useEnvironmentsStore();

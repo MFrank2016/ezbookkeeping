@@ -266,6 +266,45 @@
                                         </template>
                                     </v-tooltip>
                                 </v-col>
+                                <v-col cols="12" v-if="type === TransactionEditPageType.Transaction && isInvestmentTransfer">
+                                    <div class="text-body-large font-weight-bold mb-2">投资信息</div>
+                                    <template v-if="mode === TransactionEditPageMode.View">
+                                        <div class="text-body-medium">投资标的：黄金</div>
+                                        <div class="text-body-medium">克重：{{ investmentForm.unitsGrams ? `${investmentForm.unitsGrams} 克` : '-' }}</div>
+                                        <div class="text-body-medium">手续费：{{ investmentForm.feeYuan ? `${investmentForm.feeYuan} 元` : '-' }}</div>
+                                        <div class="text-body-small mt-1">转账金额请填实际扣款总额（含手续费）</div>
+                                    </template>
+                                    <v-row v-else>
+                                        <v-col cols="12" md="4">
+                                            <v-select item-title="title" item-value="value" persistent-placeholder
+                                                      :disabled="loading || submitting || recognizing"
+                                                      label="投资标的" placeholder="投资标的"
+                                                      :items="investmentTargets"
+                                                      v-model="investmentForm.target">
+                                            </v-select>
+                                        </v-col>
+                                        <v-col cols="12" md="4">
+                                            <v-text-field type="number" step="0.0001" autocomplete="off" persistent-placeholder
+                                                          :disabled="loading || submitting || recognizing"
+                                                          :label="investmentDirection === 'buy' ? '买入克重' : '卖出克重'"
+                                                          :placeholder="investmentDirection === 'buy' ? '买入克重' : '卖出克重'"
+                                                          suffix="克"
+                                                          v-model="investmentForm.unitsGrams">
+                                            </v-text-field>
+                                        </v-col>
+                                        <v-col cols="12" md="4">
+                                            <v-text-field type="number" step="0.01" autocomplete="off" persistent-placeholder
+                                                          :disabled="loading || submitting || recognizing"
+                                                          label="手续费" placeholder="手续费"
+                                                          suffix="元"
+                                                          v-model="investmentForm.feeYuan">
+                                            </v-text-field>
+                                        </v-col>
+                                        <v-col cols="12" class="pt-0">
+                                            <div class="text-body-small">转账金额请填实际扣款总额（含手续费）</div>
+                                        </v-col>
+                                    </v-row>
+                                </v-col>
                                 <v-col cols="12" md="6" v-if="type === TransactionEditPageType.Transaction">
                                     <date-time-select
                                         :readonly="mode === TransactionEditPageMode.View"
@@ -540,6 +579,7 @@ import { SUPPORTED_IMAGE_EXTENSIONS } from '@/consts/file.ts';
 import { TransactionTemplate } from '@/models/transaction_template.ts';
 import type { TransactionPictureInfoBasicResponse } from '@/models/transaction_picture_info.ts';
 import { Transaction } from '@/models/transaction.ts';
+import { InvestmentTarget } from '@/models/investment.ts';
 
 import { isDefined, isEquals } from '@/lib/common.ts';
 import {
@@ -648,6 +688,9 @@ const {
     transactionDescriptionTitle,
     inputEmptyProblemMessage,
     inputIsEmpty,
+    isInvestmentTransfer,
+    investmentDirection,
+    investmentForm,
     createNewTransactionModel,
     setTransactionModel,
     updateTransactionModelFromRecognizedResponse,
@@ -655,6 +698,7 @@ const {
     updateTransactionTime,
     updateTransactionTimezone,
     swapTransactionData,
+    syncInvestmentFormToTransaction,
     getTransactionPictureUrl
 } = useTransactionEditPageBase(props.type);
 
@@ -686,6 +730,8 @@ const removingPictureId = ref<string>('');
 const pastedText = ref<string>('');
 
 const initOptions = ref<TransactionEditOptions | undefined>(undefined);
+
+const investmentTargets = [{ title: '黄金', value: InvestmentTarget.Gold }];
 
 const sourceAmountColor = computed<string | undefined>(() => {
     if (transaction.value.type === TransactionType.Expense) {
@@ -901,6 +947,8 @@ function save(afterAction: AfterSaveAction): void {
     if (props.type === TransactionEditPageType.Transaction && (mode.value === TransactionEditPageMode.Add || mode.value === TransactionEditPageMode.Edit)) {
         const doSubmit = function () {
             submitting.value = true;
+
+            syncInvestmentFormToTransaction();
 
             transactionsStore.saveTransaction({
                 transaction: transaction.value as Transaction,

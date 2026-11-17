@@ -137,6 +137,9 @@ type Transaction struct {
 	RelatedId            int64             `xorm:"NOT NULL"`
 	RelatedAccountId     int64             `xorm:"NOT NULL"`
 	RelatedAccountAmount int64             `xorm:"NOT NULL"`
+	InvestmentTarget     InvestmentTarget  `xorm:"NOT NULL DEFAULT 0"`
+	InvestmentUnits      int64             `xorm:"NOT NULL DEFAULT 0"`
+	InvestmentFee        int64             `xorm:"NOT NULL DEFAULT 0"`
 	HideAmount           bool              `xorm:"NOT NULL"`
 	Comment              string            `xorm:"VARCHAR(255) NOT NULL"`
 	GeoLongitude         float64           `xorm:"INDEX(IDX_transaction_uid_deleted_time_longitude_latitude)"`
@@ -171,6 +174,9 @@ type TransactionCreateRequest struct {
 	DestinationAccountId int64                          `json:"destinationAccountId,string" binding:"min=0"`
 	SourceAmount         int64                          `json:"sourceAmount" binding:"validTransactionAmount"`
 	DestinationAmount    int64                          `json:"destinationAmount" binding:"validTransactionAmount"`
+	InvestmentTarget     int                            `json:"investmentTarget" binding:"min=0,max=1"`
+	InvestmentUnits      int64                          `json:"investmentUnits" binding:"min=0"`
+	InvestmentFee        int64                          `json:"investmentFee" binding:"min=0"`
 	HideAmount           bool                           `json:"hideAmount"`
 	TagIds               []string                       `json:"tagIds"`
 	PictureIds           []string                       `json:"pictureIds"`
@@ -190,6 +196,9 @@ type TransactionModifyRequest struct {
 	DestinationAccountId int64                          `json:"destinationAccountId,string" binding:"min=0"`
 	SourceAmount         int64                          `json:"sourceAmount" binding:"validTransactionAmount"`
 	DestinationAmount    int64                          `json:"destinationAmount" binding:"validTransactionAmount"`
+	InvestmentTarget     int                            `json:"investmentTarget" binding:"min=0,max=1"`
+	InvestmentUnits      int64                          `json:"investmentUnits" binding:"min=0"`
+	InvestmentFee        int64                          `json:"investmentFee" binding:"min=0"`
 	HideAmount           bool                           `json:"hideAmount"`
 	TagIds               []string                       `json:"tagIds"`
 	PictureIds           []string                       `json:"pictureIds"`
@@ -437,6 +446,9 @@ type TransactionInfoResponse struct {
 	DestinationAccount   *AccountInfoResponse                     `json:"destinationAccount,omitempty"`
 	SourceAmount         int64                                    `json:"sourceAmount"`
 	DestinationAmount    *int64                                   `json:"destinationAmount,omitempty"`
+	InvestmentTarget     InvestmentTarget                         `json:"investmentTarget"`
+	InvestmentUnits      int64                                    `json:"investmentUnits"`
+	InvestmentFee        int64                                    `json:"investmentFee"`
 	HideAmount           bool                                     `json:"hideAmount"`
 	TagIds               []string                                 `json:"tagIds"`
 	Tags                 []*TransactionTagInfoResponse            `json:"tags,omitempty"`
@@ -687,6 +699,9 @@ func (t *Transaction) ToTransactionInfoResponse(tagIds []int64, editable bool) *
 		DestinationAccountId: destinationAccountId,
 		SourceAmount:         sourceAmount,
 		DestinationAmount:    destinationAmount,
+		InvestmentTarget:     t.InvestmentTarget,
+		InvestmentUnits:      t.InvestmentUnits,
+		InvestmentFee:        t.InvestmentFee,
 		HideAmount:           t.HideAmount,
 		TagIds:               utils.Int64ArrayToStringArray(tagIds),
 		Comment:              t.Comment,

@@ -1543,6 +1543,9 @@ func (a *TransactionsApi) TransactionModifyHandler(c *core.WebContext) (any, *er
 	if newTransaction.Type == models.TRANSACTION_DB_TYPE_TRANSFER_OUT {
 		newTransaction.RelatedAccountId = transactionModifyReq.DestinationAccountId
 		newTransaction.RelatedAccountAmount = transactionModifyReq.DestinationAmount
+		newTransaction.InvestmentTarget = models.InvestmentTarget(transactionModifyReq.InvestmentTarget)
+		newTransaction.InvestmentUnits = transactionModifyReq.InvestmentUnits
+		newTransaction.InvestmentFee = transactionModifyReq.InvestmentFee
 	}
 
 	if transactionModifyReq.GeoLocation != nil {
@@ -1560,6 +1563,9 @@ func (a *TransactionsApi) TransactionModifyHandler(c *core.WebContext) (any, *er
 		(newTransaction.Type != models.TRANSACTION_DB_TYPE_TRANSFER_OUT || newTransaction.RelatedAccountAmount == transaction.RelatedAccountAmount) &&
 		newTransaction.HideAmount == transaction.HideAmount &&
 		newTransaction.Comment == transaction.Comment &&
+		newTransaction.InvestmentTarget == transaction.InvestmentTarget &&
+		newTransaction.InvestmentUnits == transaction.InvestmentUnits &&
+		newTransaction.InvestmentFee == transaction.InvestmentFee &&
 		newTransaction.GeoLongitude == transaction.GeoLongitude &&
 		newTransaction.GeoLatitude == transaction.GeoLatitude &&
 		utils.Int64SliceEquals(tagIds, transactionTagIds) &&
@@ -3476,6 +3482,9 @@ func (a *TransactionsApi) createNewTransactionModel(uid int64, transactionCreate
 	if transactionCreateReq.Type == models.TRANSACTION_TYPE_TRANSFER {
 		transaction.RelatedAccountId = transactionCreateReq.DestinationAccountId
 		transaction.RelatedAccountAmount = transactionCreateReq.DestinationAmount
+		transaction.InvestmentTarget = models.InvestmentTarget(transactionCreateReq.InvestmentTarget)
+		transaction.InvestmentUnits = transactionCreateReq.InvestmentUnits
+		transaction.InvestmentFee = transactionCreateReq.InvestmentFee
 	}
 
 	if transactionCreateReq.GeoLocation != nil {

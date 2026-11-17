@@ -33,6 +33,13 @@ type CronJobFixedTimePeriod struct {
 	Time time.Time
 }
 
+// CronJobWeeklyPeriod represents the period of execution at fixed weekday and time
+type CronJobWeeklyPeriod struct {
+	Weekday time.Weekday
+	Hour    uint32
+	Minute  uint32
+}
+
 // GetInterval returns the interval time of the period of CronJobIntervalPeriod
 func (p CronJobIntervalPeriod) GetInterval() time.Duration {
 	return p.Interval
@@ -76,4 +83,14 @@ func (p CronJobFixedTimePeriod) GetInterval() time.Duration {
 // ToJobDefinition returns the gocron job definition of the period of CronJobFixedTimePeriod
 func (p CronJobFixedTimePeriod) ToJobDefinition() gocron.JobDefinition {
 	return gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(p.Time))
+}
+
+// GetInterval returns the interval time of the period of CronJobWeeklyPeriod
+func (p CronJobWeeklyPeriod) GetInterval() time.Duration {
+	return 7 * 24 * time.Hour
+}
+
+// ToJobDefinition returns the gocron job definition of the period of CronJobWeeklyPeriod
+func (p CronJobWeeklyPeriod) ToJobDefinition() gocron.JobDefinition {
+	return gocron.CronJob(fmt.Sprintf("0 %d %d * * %d", p.Minute, p.Hour, p.Weekday), true)
 }

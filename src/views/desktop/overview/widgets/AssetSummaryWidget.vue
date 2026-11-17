@@ -23,6 +23,11 @@
                     </div>
                 </div>
             </div>
+
+            <div class="overview-widget__caption text-body-medium text-truncate mt-3" v-if="showInvestmentValuation && !loading">
+                投资估值 {{ investmentMarketValue }}
+                <span :style="{ color: investmentDiffColor }">（较账面 {{ investmentDiffText }}）</span>
+            </div>
         </v-card-text>
     </v-card>
 </template>
@@ -59,7 +64,11 @@ const {
     allAccounts,
     netAssets,
     totalAssets,
-    totalLiabilities
+    totalLiabilities,
+    showInvestmentValuation,
+    investmentMarketValue,
+    investmentDiffText,
+    investmentDiffColor
 } = useAssetSummaryWidgetBase('overview');
 
 const displayAccountCount = computed<string>(() => formatNumberToLocalizedNumerals(allAccounts.value?.length ?? 0));

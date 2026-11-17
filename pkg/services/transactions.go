@@ -877,6 +877,14 @@ func (s *TransactionService) ModifyTransaction(c core.Context, transaction *mode
 	transaction.UpdatedUnixTime = now
 	updateCols = append(updateCols, "updated_unix_time")
 
+	if transaction.Type != models.TRANSACTION_DB_TYPE_TRANSFER_OUT {
+		transaction.InvestmentTarget = models.INVESTMENT_TARGET_NONE
+		transaction.InvestmentUnits = 0
+		transaction.InvestmentFee = 0
+	}
+
+	updateCols = append(updateCols, "investment_target", "investment_units", "investment_fee")
+
 	addTagIds = utils.ToUniqueInt64Slice(addTagIds)
 	removeTagIds = utils.ToUniqueInt64Slice(removeTagIds)
 
@@ -931,6 +939,13 @@ func (s *TransactionService) ModifyTransaction(c core.Context, transaction *mode
 
 		// Check whether account id is valid
 		err = s.isAccountIdValid(transaction)
+
+		if err != nil {
+			return err
+		}
+
+		// Check whether investment fields are valid
+		err = validateInvestmentTransaction(sess, transaction)
 
 		if err != nil {
 			return err
@@ -2172,6 +2187,9 @@ func (s *TransactionService) GetRelatedTransferTransaction(originalTransaction *
 		RelatedId:            originalTransaction.TransactionId,
 		RelatedAccountId:     originalTransaction.AccountId,
 		RelatedAccountAmount: originalTransaction.Amount,
+		InvestmentTarget:     originalTransaction.InvestmentTarget,
+		InvestmentUnits:      originalTransaction.InvestmentUnits,
+		InvestmentFee:        originalTransaction.InvestmentFee,
 		Comment:              originalTransaction.Comment,
 		GeoLongitude:         originalTransaction.GeoLongitude,
 		GeoLatitude:          originalTransaction.GeoLatitude,
@@ -2643,6 +2661,13 @@ func (s *TransactionService) doCreateTransaction(c core.Context, database datast
 
 	// Get and verify category
 	err = s.isCategoryValid(sess, transaction)
+
+	if err != nil {
+		return err
+	}
+
+	// Get and verify investment fields
+	err = validateInvestmentTransaction(sess, transaction)
 
 	if err != nil {
 		return err

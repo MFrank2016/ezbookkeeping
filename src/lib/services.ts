@@ -200,6 +200,13 @@ import type {
     ImportPresetMoveRequest,
     ImportPresetDeleteRequest
 } from '@/models/import_preset.ts';
+import type {
+    InvestmentOverview,
+    InvestmentAccountsResponse,
+    InvestmentAccountCreateRequest,
+    InvestmentAccountModifyRequest,
+    InvestmentAccountDeleteRequest
+} from '@/models/investment.ts';
 
 import {
     getCurrentToken,
@@ -560,6 +567,21 @@ export default {
     },
     deleteSubAccount: (req: AccountDeleteRequest): ApiResponsePromise<boolean> => {
         return axios.post<ApiResponse<boolean>>('v1/accounts/sub_account/delete.json', req);
+    },
+    getInvestmentOverview: (refresh?: boolean): ApiResponsePromise<InvestmentOverview> => {
+        return axios.get<ApiResponse<InvestmentOverview>>(`v1/investments/overview.json?refresh=${refresh ? 1 : 0}`);
+    },
+    getInvestmentAccounts: (): ApiResponsePromise<InvestmentAccountsResponse> => {
+        return axios.get<ApiResponse<InvestmentAccountsResponse>>('v1/investments/accounts.json');
+    },
+    addInvestmentAccount: (req: InvestmentAccountCreateRequest): ApiResponsePromise<boolean> => {
+        return axios.post<ApiResponse<boolean>>('v1/investments/accounts/add.json', req);
+    },
+    modifyInvestmentAccount: (req: InvestmentAccountModifyRequest): ApiResponsePromise<boolean> => {
+        return axios.post<ApiResponse<boolean>>('v1/investments/accounts/modify.json', req);
+    },
+    deleteInvestmentAccount: (req: InvestmentAccountDeleteRequest): ApiResponsePromise<boolean> => {
+        return axios.post<ApiResponse<boolean>>('v1/investments/accounts/delete.json', req);
     },
     getTransactions: (req: TransactionListByMaxTimeRequest): ApiResponsePromise<TransactionInfoPageWrapperResponse> => {
         const tagFilter = encodeURIComponent(req.tagFilter);

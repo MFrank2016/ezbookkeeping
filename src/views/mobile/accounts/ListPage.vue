@@ -70,13 +70,22 @@
                               class="nested-list-item"
                               :id="getAccountDomId(account)"
                               :class="{ 'has-child-list-item': account.type === AccountType.MultiSubAccounts.type && hasVisibleSubAccount(account), 'actual-first-child': account.id === firstShowingIds.accounts[accountCategory.type], 'actual-last-child': account.id === lastShowingIds.accounts[accountCategory.type] }"
-                              :after="account.type === AccountType.SingleAccount.type ? accountBalanceOrAvailableCredit(account, undefined, showAvailableCreditForCreditCard, showAccountBalance) : ''"
                               :link="!sortable ? '/transaction/list?accountIds=' + account.id : null"
                               :key="account.id"
                               v-for="account in allCategorizedAccountsMap[accountCategory.type]!.accounts"
                               v-show="showHidden || !account.hidden"
                               @taphold="setSortable()"
                 >
+                    <template #after v-if="account.type === AccountType.SingleAccount.type">
+                        <div class="account-after-with-investment">
+                            <span>{{ accountBalanceOrAvailableCredit(account, undefined, showAvailableCreditForCreditCard, showAccountBalance) }}</span>
+                            <small class="account-investment-valuation" v-if="accountInvestmentValuation(account, undefined)"
+                                   :style="{ color: accountInvestmentValuation(account, undefined)?.color }">
+                                估值 {{ accountInvestmentValuation(account, undefined)?.marketValue }}
+                                ({{ accountInvestmentValuation(account, undefined)?.diff }})
+                            </small>
+                        </div>
+                    </template>
                     <template #media v-if="account.type !== AccountType.MultiSubAccounts.type || !hasVisibleSubAccount(account)">
                         <ItemIcon :icon-type="getAccountIconType(account.iconType)" :icon-id="account.icon" :color="account.color">
                             <f7-badge color="gray" class="right-bottom-icon" v-if="account.hidden">
@@ -107,12 +116,21 @@
                                               :class="{ 'actual-first-child': subAccount.id === firstShowingIds.subAccounts[account.id], 'actual-last-child': subAccount.id === lastShowingIds.subAccounts[account.id] }"
                                               :id="getAccountDomId(subAccount)"
                                               :title="subAccount.name" :footer="subAccount.comment"
-                                              :after="!showAvailableCreditForCreditCard || account.category !== AccountCategory.CreditCard.type ? accountBalance(account, subAccount.id, showAccountBalance) : ''"
                                               :link="!sortable ? '/transaction/list?accountIds=' + subAccount.id : null"
                                               :key="subAccount.id"
                                               v-for="subAccount in account.subAccounts"
                                               v-show="showHidden || !subAccount.hidden"
                                 >
+                                    <template #after v-if="!showAvailableCreditForCreditCard || account.category !== AccountCategory.CreditCard.type">
+                                        <div class="account-after-with-investment">
+                                            <span>{{ accountBalance(account, subAccount.id, showAccountBalance) }}</span>
+                                            <small class="account-investment-valuation" v-if="accountInvestmentValuation(account, subAccount.id)"
+                                                   :style="{ color: accountInvestmentValuation(account, subAccount.id)?.color }">
+                                                估值 {{ accountInvestmentValuation(account, subAccount.id)?.marketValue }}
+                                                ({{ accountInvestmentValuation(account, subAccount.id)?.diff }})
+                                            </small>
+                                        </div>
+                                    </template>
                                     <template #media>
                                         <ItemIcon :icon-type="getAccountIconType(subAccount.iconType)" :icon-id="subAccount.icon" :color="subAccount.color">
                                             <f7-badge color="gray" class="right-bottom-icon" v-if="subAccount.hidden">
@@ -182,6 +200,9 @@
                 <f7-actions-button @click="setAccountsIncludedInTotal()">{{ tt('Set Accounts Included in Total') }}</f7-actions-button>
             </f7-actions-group>
             <f7-actions-group>
+                <f7-actions-button @click="showInvestmentPage()">投资</f7-actions-button>
+            </f7-actions-group>
+            <f7-actions-group>
                 <f7-actions-button bold close>{{ tt('Cancel') }}</f7-actions-button>
             </f7-actions-group>
         </f7-actions>
@@ -238,6 +259,7 @@ import type { Router } from 'framework7/types';
 import { useI18n } from '@/locales/helpers.ts';
 import { useI18nUIComponents, showLoading, hideLoading } from '@/lib/ui/mobile.ts';
 import { useAccountListPageBase } from '@/views/base/accounts/AccountListPageBase.ts';
+import type { InvestmentValuationDisplay } from '@/views/base/overview/AssetSummaryWidgetBase.ts';
 
 import { useRootStore } from '@/stores/index.ts';
 import { useSettingsStore } from '@/stores/setting.ts';
@@ -270,7 +292,8 @@ const {
     maxCategoryAccountCount,
     accountCategoryTotalBalance,
     accountBalance,
-    accountBalanceOrAvailableCredit
+    accountBalanceOrAvailableCredit,
+    investmentValuations
 } = useAccountListPageBase();
 
 const rootStore = useRootStore();
@@ -586,6 +609,16 @@ function cancelSort(): void {
     });
 }
 
+function accountInvestmentValuation(account: Account, currentSubAccountId: string | undefined): InvestmentValuationDisplay | null {
+    const accountId: string | null = account.getAccountOrSubAccountId(currentSubAccountId);
+    return accountId ? investmentValuations.value[accountId] ?? null : null;
+}
+
+function showInvestmentPage(): void {
+    showMoreActionSheet.value = false;
+    props.f7router.navigate('/investment');
+}
+
 function setAccountsIncludedInTotal(): void {
     props.f7router.navigate('/settings/filter/account?type=accountListTotalAmount');
 }
@@ -663,6 +696,17 @@ init();
 
 .account-list .item-footer {
     padding-top: 4px;
+}
+
+.account-after-with-investment {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.account-investment-valuation {
+    font-size: var(--ebk-large-footer-font-size);
+    color: var(--f7-list-item-footer-text-color);
 }
 
 .account-list-credit-card-amount-link {

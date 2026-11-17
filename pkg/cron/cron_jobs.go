@@ -30,3 +30,17 @@ var CreateScheduledTransactionJob = &CronJob{
 		return services.Transactions.CreateScheduledTransactions(c, time.Now().Unix(), c.GetInterval())
 	},
 }
+
+// UpdateInvestmentValuationsJob represents the cron job which weekly updates the valuations of investment accounts
+var UpdateInvestmentValuationsJob = &CronJob{
+	Name:        "UpdateInvestmentValuations",
+	Description: "Weekly compare the market value of investment accounts with their balances and create valuation transactions.",
+	Period: CronJobWeeklyPeriod{
+		Weekday: time.Sunday,
+		Hour:    23,
+		Minute:  30,
+	},
+	Run: func(c *core.CronContext) error {
+		return services.Investments.UpdateAllInvestmentValuations(c)
+	},
+}
