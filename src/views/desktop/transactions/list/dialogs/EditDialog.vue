@@ -539,14 +539,12 @@
     </v-dialog>
 
     <confirm-dialog ref="confirmDialog"/>
-    <snack-bar ref="snackbar" />
     <input ref="pictureInput" type="file" style="display: none" :accept="SUPPORTED_IMAGE_EXTENSIONS" @change="onUploadPicture($event)" />
 </template>
 
 <script setup lang="ts">
 import MapView from '@/components/common/MapView.vue';
 import ConfirmDialog from '@/components/desktop/ConfirmDialog.vue';
-import SnackBar from '@/components/desktop/SnackBar.vue';
 
 import { ref, computed, useTemplateRef, watch, nextTick } from 'vue';
 
@@ -566,6 +564,7 @@ import { useTransactionCategoriesStore } from '@/stores/transactionCategory.ts';
 import { useTransactionTagsStore } from '@/stores/transactionTag.ts';
 import { useTransactionsStore } from '@/stores/transaction.ts';
 import { useTransactionTemplatesStore } from '@/stores/transactionTemplate.ts';
+import { useDesktopPageStore } from '@/stores/desktopPage.ts';
 
 import type { Coordinate } from '@/core/coordinate.ts';
 import { CategoryType } from '@/core/category.ts';
@@ -635,7 +634,6 @@ interface TransactionEditResponse {
 
 type MapViewType = InstanceType<typeof MapView>;
 type ConfirmDialogType = InstanceType<typeof ConfirmDialog>;
-type SnackBarType = InstanceType<typeof SnackBar>;
 
 const props = defineProps<{
     type: TransactionEditPageType;
@@ -709,10 +707,10 @@ const transactionCategoriesStore = useTransactionCategoriesStore();
 const transactionTagsStore = useTransactionTagsStore();
 const transactionsStore = useTransactionsStore();
 const transactionTemplatesStore = useTransactionTemplatesStore();
+const desktopPageStore = useDesktopPageStore();
 
 const map = useTemplateRef<MapViewType>('map');
 const confirmDialog = useTemplateRef<ConfirmDialogType>('confirmDialog');
-const snackbar = useTemplateRef<SnackBarType>('snackbar');
 const pictureInput = useTemplateRef<HTMLInputElement>('pictureInput');
 
 let resolveFunc: ((response?: TransactionEditResponse) => void) | null = null;
@@ -940,7 +938,7 @@ function save(afterAction: AfterSaveAction): void {
     const problemMessage = inputEmptyProblemMessage.value;
 
     if (problemMessage) {
-        snackbar.value?.showMessage(problemMessage);
+        desktopPageStore.addToast(problemMessage);
         return;
     }
 
@@ -964,7 +962,7 @@ function save(afterAction: AfterSaveAction): void {
                 }
 
                 if (mode.value === TransactionEditPageMode.Add && (afterAction === AfterSaveAction.StayWithNewTransaction || afterAction === AfterSaveAction.StayWithCurrentTransaction)) {
-                    snackbar.value?.showMessage('You have added a new transaction');
+                    desktopPageStore.addToast('You have added a new transaction');
                     updateTransactionModelByAfterSaveAction(afterAction, initOptions.value);
                     clientSessionId.value = generateRandomUUID();
                 } else {
@@ -994,17 +992,17 @@ function save(afterAction: AfterSaveAction): void {
                         }).then(() => {
                             submitting.value = false;
 
-                            snackbar.value?.showMessage('Your editable transaction range has been set to All');
+                            desktopPageStore.addToast('Your editable transaction range has been set to All');
                         }).catch(error => {
                             submitting.value = false;
 
                             if (!error.processed) {
-                                snackbar.value?.showError(error);
+                                desktopPageStore.addErrorToast(error);
                             }
                         });
                     });
                 } else if (!error.processed) {
-                    snackbar.value?.showError(error);
+                    desktopPageStore.addErrorToast(error);
                 }
             });
         };
@@ -1043,7 +1041,7 @@ function save(afterAction: AfterSaveAction): void {
             submitting.value = false;
 
             if (!error.processed) {
-                snackbar.value?.showError(error);
+                desktopPageStore.addErrorToast(error);
             }
         });
     }
@@ -1067,7 +1065,7 @@ function recognizeText(text: string): void {
         recognizing.value = false;
 
         if (!error.processed) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -1149,7 +1147,7 @@ function remove(): void {
             submitting.value = false;
 
             if (!error.processed) {
-                snackbar.value?.showError(error);
+                desktopPageStore.addErrorToast(error);
             }
         });
     });
@@ -1201,7 +1199,7 @@ function updateGeoLocation(forceUpdate: boolean): void {
         logger.warn('this browser does not support geo location');
 
         if (forceUpdate) {
-            snackbar.value?.showMessage('Unable to retrieve current position');
+            desktopPageStore.addToast('Unable to retrieve current position');
         }
         return;
     }
@@ -1212,7 +1210,7 @@ function updateGeoLocation(forceUpdate: boolean): void {
             geoLocationStatus.value = GeoLocationStatus.Error;
 
             if (forceUpdate) {
-                snackbar.value?.showMessage('Unable to retrieve current position');
+                desktopPageStore.addToast('Unable to retrieve current position');
             }
 
             return;
@@ -1226,7 +1224,7 @@ function updateGeoLocation(forceUpdate: boolean): void {
         geoLocationStatus.value = GeoLocationStatus.Error;
 
         if (forceUpdate) {
-            snackbar.value?.showMessage('Unable to retrieve current position');
+            desktopPageStore.addToast('Unable to retrieve current position');
         }
     });
 
@@ -1275,7 +1273,7 @@ function uploadPicture(file: File): void {
         submitting.value = false;
 
         if (!error.processed) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -1301,7 +1299,7 @@ function viewOrRemovePicture(pictureInfo: TransactionPictureInfoBasicResponse): 
             if (error.error && error.error.errorCode === KnownErrorCode.TransactionPictureNotFound) {
                 transaction.value.removePicture(pictureInfo);
             } else if (!error.processed) {
-                snackbar.value?.showError(error);
+                desktopPageStore.addErrorToast(error);
             }
 
             removingPictureId.value = '';
@@ -1332,7 +1330,7 @@ function onUploadPicture(event: Event): void {
 }
 
 function onShowDateTimeError(error: string): void {
-    snackbar.value?.showError(error);
+    desktopPageStore.addErrorToast(error);
 }
 
 watch(activeTab, (newValue) => {

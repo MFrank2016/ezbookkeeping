@@ -356,12 +356,10 @@
                                  @error="onShowDateRangeError" />
 
     <confirm-dialog ref="confirmDialog"/>
-    <snack-bar ref="snackbar" />
 </template>
 
 <script setup lang="ts">
 import ConfirmDialog from '@/components/desktop/ConfirmDialog.vue';
-import SnackBar from '@/components/desktop/SnackBar.vue';
 import EditDialog from './list/dialogs/EditDialog.vue';
 import ReconciliationStatementDialog from './list/dialogs/ReconciliationStatementDialog.vue';
 import MoveAllTransactionsDialog from '@/views/desktop/accounts/list/dialogs/MoveAllTransactionsDialog.vue';
@@ -378,6 +376,7 @@ import type { InvestmentValuationDisplay } from '@/views/base/overview/AssetSumm
 import { useSettingsStore } from '@/stores/setting.ts';
 import { useUserStore } from '@/stores/user.ts';
 import { useAccountsStore } from '@/stores/account.ts';
+import { useDesktopPageStore } from '@/stores/desktopPage.ts';
 
 import { DateRange, DateRangeScene, type LocalizedDateRange, type TimeRangeAndDateType } from '@/core/datetime.ts';
 import { AccountType, AccountCategory } from '@/core/account.ts';
@@ -413,7 +412,6 @@ import {
 } from '@mdi/js';
 
 type ConfirmDialogType = InstanceType<typeof ConfirmDialog>;
-type SnackBarType = InstanceType<typeof SnackBar>;
 type EditDialogType = InstanceType<typeof EditDialog>;
 type ReconciliationStatementDialogType = InstanceType<typeof ReconciliationStatementDialog>;
 type MoveAllTransactionsDialogType = InstanceType<typeof MoveAllTransactionsDialog>;
@@ -453,9 +451,9 @@ const {
 const settingsStore = useSettingsStore();
 const userStore = useUserStore();
 const accountsStore = useAccountsStore();
+const desktopPageStore = useDesktopPageStore();
 
 const confirmDialog = useTemplateRef<ConfirmDialogType>('confirmDialog');
-const snackbar = useTemplateRef<SnackBarType>('snackbar');
 const editDialog = useTemplateRef<EditDialogType>('editDialog');
 const reconciliationStatementDialog = useTemplateRef<ReconciliationStatementDialogType>('reconciliationStatementDialog');
 const moveAllTransactionsDialog = useTemplateRef<MoveAllTransactionsDialogType>('moveAllTransactionsDialog');
@@ -525,7 +523,7 @@ function reload(force: boolean): void {
         }
 
         if (force) {
-            snackbar.value?.showMessage('Account list has been updated');
+            desktopPageStore.addToast('Account list has been updated');
         }
     }).catch(error => {
         loading.value = false;
@@ -535,7 +533,7 @@ function reload(force: boolean): void {
         }
 
         if (!error.processed) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -569,11 +567,11 @@ function add(): void {
         category: activeAccountCategoryType.value
     }).then(result => {
         if (result && result.message) {
-            snackbar.value?.showMessage(result.message);
+            desktopPageStore.addToast(result.message);
         }
     }).catch(error => {
         if (error) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -584,7 +582,7 @@ function edit(account: Account): void {
         currentAccount: account
     }).then(result => {
         if (result && result.message) {
-            snackbar.value?.showMessage(result.message);
+            desktopPageStore.addToast(result.message);
         }
 
         if (accountsStore.accountListStateInvalid && !loading.value) {
@@ -592,7 +590,7 @@ function edit(account: Account): void {
         }
     }).catch(error => {
         if (error) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -645,7 +643,7 @@ function updateLastReconciledTime(account: Account): void {
 
         accountsStore.updateAccountLastReconciledTime(account.id, getCurrentUnixTime()).then(() => {
             loading.value = false;
-            snackbar.value?.showMessage('Last reconciled time have been updated');
+            desktopPageStore.addToast('Last reconciled time have been updated');
 
             if (accountsStore.accountListStateInvalid && !loading.value) {
                 reload(false);
@@ -655,7 +653,7 @@ function updateLastReconciledTime(account: Account): void {
             loading.value = false;
 
             if (error) {
-                snackbar.value?.showError(error);
+                desktopPageStore.addErrorToast(error);
             }
         });
     });
@@ -663,7 +661,7 @@ function updateLastReconciledTime(account: Account): void {
 
 function moveAllTransactions(account: Account): void {
     moveAllTransactionsDialog.value?.open(account).then(() => {
-        snackbar.value?.showMessage('All transactions in this account have been moved.');
+        desktopPageStore.addToast('All transactions in this account have been moved.');
 
         if (accountsStore.accountListStateInvalid && !loading.value) {
             reload(false);
@@ -673,7 +671,7 @@ function moveAllTransactions(account: Account): void {
 
 function clearAllTransactions(account: Account): void {
     clearAllTransactionsDialog.value?.open(account).then(() => {
-        snackbar.value?.showMessage('All transactions in this account have been cleared');
+        desktopPageStore.addToast('All transactions in this account have been cleared');
 
         if (accountsStore.accountListStateInvalid && !loading.value) {
             reload(false);
@@ -697,7 +695,7 @@ function hide(account: Account, targetAccount: Account, hidden: boolean): void {
         loading.value = false;
 
         if (!error.processed) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -707,7 +705,7 @@ function remove(account: Account): void {
         const subAccount: Account | null = account.getSubAccount(activeSubAccount.value[account.id]);
 
         if (!subAccount) {
-            snackbar.value?.showMessage('Unable to delete this sub-account');
+            desktopPageStore.addToast('Unable to delete this sub-account');
             return;
         }
 
@@ -723,7 +721,7 @@ function remove(account: Account): void {
                 loading.value = false;
 
                 if (!error.processed) {
-                    snackbar.value?.showError(error);
+                    desktopPageStore.addErrorToast(error);
                 }
             });
         });
@@ -739,7 +737,7 @@ function remove(account: Account): void {
                 loading.value = false;
 
                 if (!error.processed) {
-                    snackbar.value?.showError(error);
+                    desktopPageStore.addErrorToast(error);
                 }
             });
         });
@@ -760,7 +758,7 @@ function saveSortResult(): void {
         loading.value = false;
 
         if (!error.processed) {
-            snackbar.value?.showError(error);
+            desktopPageStore.addErrorToast(error);
         }
     });
 }
@@ -773,7 +771,7 @@ function onMove(event: { moved: { element: { id: string }, oldIndex: number, new
     const moveEvent = event.moved;
 
     if (!moveEvent.element || !moveEvent.element.id) {
-        snackbar.value?.showMessage('Unable to move account');
+        desktopPageStore.addToast('Unable to move account');
         return;
     }
 
@@ -786,13 +784,13 @@ function onMove(event: { moved: { element: { id: string }, oldIndex: number, new
     }).then(() => {
         displayOrderModified.value = true;
     }).catch(error => {
-        snackbar.value?.showError(error);
+        desktopPageStore.addErrorToast(error);
     });
 }
 
 function onCustomDateRangeChanged(minUnixTime: number, maxUnixTime: number): void {
     if (!accountToShowReconciliationStatement.value) {
-        snackbar.value?.showMessage('An error occurred');
+        desktopPageStore.addToast('An error occurred');
         return;
     }
 
@@ -808,7 +806,7 @@ function onCustomDateRangeChanged(minUnixTime: number, maxUnixTime: number): voi
 }
 
 function onShowDateRangeError(message: string): void {
-    snackbar.value?.showError(message);
+    desktopPageStore.addErrorToast(message);
 }
 
 watch(lgAndUp, (newValue) => {
