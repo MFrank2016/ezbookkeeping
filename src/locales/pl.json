@@ -150,6 +150,7 @@
             "everyMultiDaysOfMonth": "Co miesiąc: {days}",
             "everyMultiDaysOfYear": "Co roku: {days}",
             "everyNDays": "Co {n} dni",
+            "nextPostingTime": "Następne księgowanie: {time}",
             "youHaveAccounts": "Liczba kont: {count}",
             "addNewTag": "Dodaj nowy tag „{tag}”",
             "clickToSelectedFile": "Kliknij, aby wybrać plik importu ({extensions})",
@@ -1574,6 +1575,9 @@
         "accountListPage": {
             "outstandingBalance": "Do spłaty",
             "availableBalance": "Dostępne"
+        },
+        "scheduledTransactionListPage": {
+            "disabled": "Wyłączone"
         }
     },
     "OK": "OK",
@@ -2840,6 +2844,13 @@
     "Hide Hidden Transaction Tags": "Ukryj ukryte tagi transakcji",
     "Transaction Templates": "Szablony transakcji",
     "Scheduled Transactions": "Transakcje cykliczne",
+    "List View": "Widok listy",
+    "Calendar View": "Widok kalendarza",
+    "Active": "Aktywne",
+    "Expired": "Wygasłe",
+    "Show Hidden Scheduled Transactions": "Pokaż ukryte transakcje cykliczne",
+    "Hide Hidden Scheduled Transactions": "Nie pokazuj ukrytych transakcji cyklicznych",
+    "Unable to retrieve scheduled transaction calendar": "Nie można pobrać kalendarza transakcji cyklicznych",
     "Template Name": "Nazwa szablonu",
     "No available template": "Brak dostępnych szablony",
     "Once you add templates, you can long-press the Add button on the home page to quickly add a new transaction": "Po dodaniu szablonów możesz przytrzymać przycisk „Dodaj” na stronie głównej, aby szybko dodać transakcję",
